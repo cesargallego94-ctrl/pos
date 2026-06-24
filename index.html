@@ -1,0 +1,1198 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#3E2723">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☕</text></svg>">
+    <title>Nómada Cafetero · POS Pro</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js">
+    </script>
+    <style>
+        /* Aquí va exactamente el mismo CSS que tenías, sin cambios */
+        :root {
+            --espresso: #3E2723;
+            --latte: #D7CCC8;
+            --latte-light: #efebe9;
+            --bg: #FFF8F0;
+            --text-dark: #212121;
+            --text-light: #FFFFFF;
+            --success: #2E7D32;
+            --danger: #C62828;
+            --excel: #107C41;
+            --accent: #E65100;
+            --shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            --radius: 12px;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background-color: var(--bg); color: var(--text-dark); padding-bottom: 80px; font-size: 16px; }
+        header {
+            background: linear-gradient(135deg, var(--espresso), #4E342E); color: var(--text-light);
+            padding: 16px; text-align: center; font-weight: 700; font-size: 1.3rem;
+            position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+        }
+        .container { padding: 16px; max-width: 700px; margin: 0 auto; }
+        .tab-content { display: none; animation: fadeIn 0.25s; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .card { background: #fff; border: 1px solid var(--latte); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); margin-bottom: 16px; }
+        .card-header { font-weight: 700; margin-bottom: 12px; color: var(--espresso); display: flex; align-items: center; gap: 6px; }
+        .pos-grid { display: flex; flex-direction: column; gap: 10px; }
+        .pos-item { background: #fff; border-radius: var(--radius); padding: 14px 12px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 4px rgba(0,0,0,0.04); border: 1px solid #f0e6df; }
+        .pos-info h3 { font-size: 0.95rem; margin-bottom: 4px; }
+        .pos-info .meta { font-size: 0.8rem; color: #777; }
+        .btn-qty { background: #f1e9e3; border: 1px solid #d9c9bf; width: 40px; height: 40px; border-radius: 50%; font-size: 1.5rem; font-weight: 700; color: var(--espresso); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .qty-display { font-size: 1.2rem; font-weight: 700; min-width: 28px; text-align: center; }
+        .cart-bar { background: var(--espresso); color: #fff; padding: 14px 16px; border-radius: var(--radius); display: flex; justify-content: space-between; align-items: center; gap: 10px; position: sticky; bottom: 70px; margin-top: 8px; box-shadow: 0 -2px 8px rgba(0,0,0,0.2); }
+        .btn-primary { background: var(--latte); color: var(--espresso); border: none; padding: 12px 22px; font-weight: 700; border-radius: 30px; cursor: pointer; }
+        .btn-sm { padding: 6px 14px; font-size: 0.8rem; border-radius: 20px; background: #fff; color: var(--espresso); border: 1px solid var(--latte); cursor: pointer; }
+        .btn-sm.danger { color: var(--danger); border-color: #ef9a9a; }
+        .btn-sm.success { background: var(--success); color: #fff; border: none; }
+        .form-group { margin-bottom: 14px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 0.85rem; }
+        .form-control {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #d9c9bf;
+    border-radius: 8px;
+    font-size: 1rem;
+    background: #fff;
+    -webkit-appearance: none;
+    appearance: none;          /* ← Propiedad estándar */
+    -moz-appearance: none;     /* ← Para Firefox (opcional pero recomendado) */
+}
+        .btn-block { width: 100%; background: var(--espresso); color: #fff; border: none; padding: 14px; font-size: 1rem; font-weight: 700; border-radius: 30px; cursor: pointer; }
+        .btn-accent { background: var(--accent); }
+        .history-list { background: #fff; border-radius: var(--radius); overflow: hidden; }
+        .history-item { padding: 12px 16px; border-bottom: 1px solid #f0e6df; display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; }
+        .badge { padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 700; }
+        .badge-ok { background: #E8F5E9; color: #2E7D32; } .badge-low { background: #FFEBEE; color: #C62828; }
+        .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; height: 68px; background: #fff; display: flex; justify-content: space-around; align-items: center; box-shadow: 0 -2px 12px rgba(0,0,0,0.1); z-index: 100; overflow-x: auto; }
+        .nav-item { color: #8d7b6f; font-size: 0.65rem; font-weight: 600; display: flex; flex-direction: column; align-items: center; background: none; border: none; padding: 6px 4px; border-radius: 12px; cursor: pointer; flex: 1; }
+        .nav-item.active { color: var(--espresso); background: #f5ece5; }
+        .nav-icon { font-size: 1.3rem; }
+        .toast { position: fixed; top: 80px; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 10px 24px; border-radius: 30px; z-index: 999; }
+        .flex-row { display: flex; gap: 10px; flex-wrap: wrap; }
+        .logo-preview { max-width: 120px; max-height: 60px; margin: 0 auto 10px; display: block; }
+        .dashboard-card { background: var(--espresso); color: #fff; padding: 12px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-around; text-align: center; }
+        .dashboard-item { flex: 1; }
+        .dashboard-item .value { font-size: 1.2rem; font-weight: 700; }
+        .dashboard-item .label { font-size: 0.7rem; opacity: 0.8; }
+        .movement-log { max-height: 200px; overflow-y: auto; font-size: 0.8rem; }
+    </style>
+</head>
+<body>
+    <header>☕ NÓMADA CAFETERO · POS PRO</header>
+    <div class="container">
+        <!-- TAB POS -->
+        <div id="tab-pos" class="tab-content active">
+            <div class="card">
+                <div class="card-header">📊 Resumen del día</div>
+                <div class="dashboard-card" id="dashboard-today">
+                    <div class="dashboard-item"><span class="value" id="dash-sales">$0</span><span class="label">Ventas</span></div>
+                    <div class="dashboard-item"><span class="value" id="dash-expenses">$0</span><span class="label">Gastos</span></div>
+                    <div class="dashboard-item"><span class="value" id="dash-net">$0</span><span class="label">Utilidad</span></div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-header">💵 Caja</div>
+                <div id="cash-register-status" style="margin-bottom:8px;"></div>
+                <button class="btn-sm success" id="btn-open-cash" onclick="openCashRegister()">🔓 Abrir caja</button>
+                <button class="btn-sm danger" id="btn-close-cash" style="display:none;" onclick="closeCashRegister()">🔒 Cerrar caja</button>
+            </div>
+            <div class="card">
+                <div class="card-header">🛒 Nueva Venta</div>
+                <div class="form-group"><label>📅 Fecha</label><input type="date" id="sale-date" class="form-control"></div>
+                <div class="form-group"><label>👤 Cliente (opc.)</label><select id="sale-client" class="form-control"><option value="">Sin cliente</option></select></div>
+                <div class="form-group"><label>💳 Método de pago</label><select id="sale-payment-method" class="form-control"><option value="cash">Efectivo</option><option value="transfer">Transferencia</option><option value="card">Tarjeta</option><option value="mixed">Mixto</option></select></div>
+                <div class="form-group"><label>📝 Nota interna</label><input type="text" id="sale-note" class="form-control" placeholder="Ej: cliente sin azúcar"></div>
+                <input type="text" id="pos-search" class="form-control" placeholder="🔍 Buscar producto..." style="margin-bottom:12px;">
+                <div class="pos-grid" id="pos-products-container"></div>
+                <button class="btn-sm" onclick="clearCart()">🗑️ Vaciar</button>
+            </div>
+            <div class="cart-bar">
+                <div><span class="cart-total-label">Total</span> <span id="cart-total">$0</span></div>
+                <button class="btn-primary" onclick="processCheckout()">💳 Cobrar</button>
+            </div>
+        </div>
+
+        <!-- TAB VENTAS -->
+        <div id="tab-sales-history" class="tab-content">
+            <div class="card">
+                <div class="card-header">📜 Historial de Ventas</div>
+                <div class="flex-row"><input type="date" id="sales-filter-from" class="form-control"><input type="date" id="sales-filter-to" class="form-control"></div>
+                <button class="btn-sm success" onclick="filterSales()">Filtrar</button>
+                <button class="btn-sm" onclick="clearSalesFilter()">Todas</button>
+                <div id="full-sales-history" style="max-height:50vh; overflow-y:auto;"></div>
+            </div>
+        </div>
+
+        <!-- TAB GASTOS -->
+        <div id="tab-gastos" class="tab-content">
+            <div class="card">
+                <div class="card-header">📝 Registrar Egreso</div>
+                <div class="form-group"><label>Tipo</label><select id="expense-category" class="form-control"><option value="OPEX - Logística">🚚 Logística</option><option value="OPEX - Administrativo">📋 Admin</option><option value="OPEX - Personal">👤 Personal</option><option value="Inventario (Compra en Bloque)">📦 Inventario</option><option value="CAPEX">🔧 CAPEX</option></select></div>
+                <div class="form-group"><label>Proveedor (opc.)</label><select id="expense-supplier" class="form-control"><option value="">Sin proveedor</option></select></div>
+                <div class="form-group"><label>Descripción</label><input type="text" id="expense-desc" class="form-control"></div>
+                <div class="form-group"><label>Monto ($)</label><input type="number" id="expense-amount" class="form-control" min="1"></div>
+                <div class="form-group"><label>Nota</label><input type="text" id="expense-note" class="form-control"></div>
+                <button class="btn-block btn-accent" onclick="addExpense()">📥 Registrar</button>
+            </div>
+            <div class="card"><div class="card-header">Últimos egresos</div><div class="history-list" id="expense-history" style="max-height:40vh; overflow-y:auto;"></div></div>
+        </div>
+
+        <!-- TAB INVENTARIO -->
+        <div id="tab-inventario" class="tab-content">
+            <div class="card">
+                <div class="card-header">📦 Insumos / Materias Primas</div>
+                <div class="form-group"><label>Nombre</label><input type="text" id="insumo-name" class="form-control" placeholder="Ej: Café en grano (kg)"></div>
+                <div class="form-group"><label>Unidad</label><input type="text" id="insumo-unit" class="form-control" placeholder="kg, litros..."></div>
+                <div class="form-group"><label>Costo por unidad ($)</label><input type="number" id="insumo-cost" class="form-control"></div>
+                <div class="form-group"><label>Stock inicial</label><input type="number" id="insumo-stock" class="form-control" step="any"></div>
+                <div class="form-group"><label>Stock mínimo para alerta</label><input type="number" id="insumo-min" class="form-control" step="any"></div>
+                <button class="btn-block" onclick="addInsumo()">➕ Agregar</button>
+            </div>
+            <div class="card">
+                <div class="card-header">🍵 Recetas (Productos finales)</div>
+                <div class="form-group"><label>Nombre</label><input type="text" id="recipe-name" class="form-control"></div>
+                <div class="form-group"><label>Precio venta ($)</label><input type="number" id="recipe-price" class="form-control"></div>
+                <div id="recipe-ingredients"></div>
+                <button class="btn-sm" onclick="addIngredientRow()">➕ Añadir insumo</button>
+                <button class="btn-block btn-accent" onclick="saveRecipe()" style="margin-top:10px;">💾 Guardar producto</button>
+            </div>
+            <div class="card">
+                <div class="card-header">⚠️ Ajuste de inventario</div>
+                <select id="adj-insumo" class="form-control"></select>
+                <input type="number" id="adj-qty" class="form-control" placeholder="Cantidad (negativa para pérdida)" step="any">
+                <input type="text" id="adj-reason" class="form-control" placeholder="Motivo (merma, degustación...)">
+                <button class="btn-block" onclick="adjustInventory()">✂️ Aplicar ajuste</button>
+            </div>
+            <div class="card">
+                <div class="card-header">📊 Inventario actual</div>
+                <div id="inventory-status-container" class="pos-grid"></div>
+            </div>
+            <div class="card">
+                <div class="card-header">📜 Movimientos de inventario</div>
+                <div id="movement-log" class="movement-log"></div>
+            </div>
+        </div>
+
+        <!-- TAB CONTACTOS -->
+        <div id="tab-contactos" class="tab-content">
+            <div class="card"><div class="card-header">👥 Clientes</div>
+                <div class="form-group"><label>Nombre</label><input type="text" id="client-name" class="form-control"></div>
+                <div class="form-group"><label>WhatsApp</label><input type="text" id="client-whatsapp" class="form-control"></div>
+                <div class="form-group"><label>Dirección</label><input type="text" id="client-address" class="form-control"></div>
+                <button class="btn-block" onclick="addClient()">➕ Agregar</button>
+                <div id="clients-list"></div>
+            </div>
+            <div class="card"><div class="card-header">🏭 Proveedores</div>
+                <div class="form-group"><label>Nombre</label><input type="text" id="supplier-name" class="form-control"></div>
+                <div class="form-group"><label>WhatsApp</label><input type="text" id="supplier-whatsapp" class="form-control"></div>
+                <div class="form-group"><label>Dirección</label><input type="text" id="supplier-address" class="form-control"></div>
+                <button class="btn-block btn-accent" onclick="addSupplier()">➕ Agregar</button>
+                <div id="suppliers-list"></div>
+            </div>
+        </div>
+
+        <!-- TAB REPORTES -->
+        <div id="tab-reportes" class="tab-content">
+            <div class="card"><div class="card-header">📊 Estado de Resultados</div>
+                <div class="flex-row"><input type="date" id="pnl-from" class="form-control"><input type="date" id="pnl-to" class="form-control"></div>
+                <button class="btn-sm success" onclick="applyPnlFilter()">Filtrar</button>
+                <button class="btn-sm" onclick="clearPnlFilter()">Todo</button>
+                <div id="pnl-container"></div>
+            </div>
+            <div class="card"><div class="card-header">🎨 Logo del negocio</div>
+                <input type="file" id="logo-upload" accept="image/*" onchange="handleLogoUpload(event)">
+                <img id="logo-preview" class="logo-preview" style="display:none;">
+                <button class="btn-sm" onclick="clearLogo()">🗑️ Quitar logo</button>
+            </div>
+            <div class="card"><div class="card-header">💾 Datos</div>
+                <button class="btn-block" style="background:var(--excel); margin-bottom:8px;" onclick="exportToExcel()">📥 Excel</button>
+                <button class="btn-block" style="background:#1565C0; margin-bottom:8px;" onclick="exportBackup()">📤 Backup JSON</button>
+                <button class="btn-block" style="background:#6A1B9A; margin-bottom:8px;" onclick="document.getElementById('restore-file-input').click()">📂 Restaurar</button>
+                <input type="file" id="restore-file-input" accept=".json" style="display:none;" onchange="importBackup(event)">
+                <button class="btn-block" style="background:var(--danger);" onclick="resetSystemData()">⚠️ Reiniciar</button>
+            </div>
+        </div>
+    </div>
+
+    <nav class="nav-bar">
+        <button class="nav-item active" data-tab="tab-pos"><span class="nav-icon">☕</span>POS</button>
+        <button class="nav-item" data-tab="tab-sales-history"><span class="nav-icon">📜</span>Ventas</button>
+        <button class="nav-item" data-tab="tab-gastos"><span class="nav-icon">📝</span>Gastos</button>
+        <button class="nav-item" data-tab="tab-inventario"><span class="nav-icon">📦</span>Inventario</button>
+        <button class="nav-item" data-tab="tab-contactos"><span class="nav-icon">👥</span>Contactos</button>
+        <button class="nav-item" data-tab="tab-reportes"><span class="nav-icon">📊</span>Reportes</button>
+    </nav>
+    <div id="toast" class="toast" style="display:none;"></div>
+
+    <!-- Aquí va exactamente el mismo JavaScript que tenías, pero con el registro del SW al final -->
+    <script>
+        (function () {
+            'use strict';
+
+            const STORAGE_KEY = 'NOMADA_POS_PRO_V6';
+            const INITIAL_CAPITAL = 3000000;
+
+            const clone = (obj) => JSON.parse(JSON.stringify(obj));
+
+            const DEFAULT_INSUMOS = [
+                { id: "I001", name: "Café en grano (kg)", unit: "kg", costPerUnit: 45000, stock: 2, minStock: 0.5 },
+                { id: "I002", name: "Vasos 8oz", unit: "unidad", costPerUnit: 120, stock: 200, minStock: 20 },
+                { id: "I003", name: "Filtros V60", unit: "unidad", costPerUnit: 80, stock: 100, minStock: 10 },
+                { id: "I004", name: "Agua filtrada (L)", unit: "litro", costPerUnit: 10, stock: 50, minStock: 5 },
+                { id: "I005", name: "Snack", unit: "unidad", costPerUnit: 1500, stock: 30, minStock: 5 }
+            ];
+
+            const DEFAULT_PRODUCTS = [
+                { id: "P001", name: "Café filtrado 8oz", price: 6000, recipe: [{ insumoId: "I001", qty: 0.008 }, { insumoId: "I002", qty: 1 }, { insumoId: "I003", qty: 1 }, { insumoId: "I004", qty: 0.1 }] },
+                { id: "P002", name: "Cold brew 12oz", price: 8500, recipe: [{ insumoId: "I001", qty: 0.015 }, { insumoId: "I002", qty: 1 }, { insumoId: "I004", qty: 0.35 }] }
+            ];
+
+            let appState = createDefaultState();
+            let salesFilter = { from: '', to: '' };
+            let pnlFilter = { from: '', to: '' };
+
+            function createDefaultState() {
+                const products = clone(DEFAULT_PRODUCTS);
+                const cart = {};
+                products.forEach(p => cart[p.id] = 0);
+                return {
+                    products,
+                    insumos: clone(DEFAULT_INSUMOS),
+                    sales: [],
+                    expenses: [],
+                    clients: [],
+                    suppliers: [],
+                    inventoryMovements: [],
+                    cashRegister: { isOpen: false, initialAmount: 0, closingAmount: 0, closeDate: null, history: [] },
+                    logo: null,
+                    cart
+                };
+            }
+
+            function ensureStateShape(state) {
+                const base = createDefaultState();
+                const merged = Object.assign(base, state || {});
+                merged.products = Array.isArray(merged.products) ? merged.products : clone(DEFAULT_PRODUCTS);
+                merged.insumos = Array.isArray(merged.insumos) ? merged.insumos : clone(DEFAULT_INSUMOS);
+                merged.sales = Array.isArray(merged.sales) ? merged.sales : [];
+                merged.expenses = Array.isArray(merged.expenses) ? merged.expenses : [];
+                merged.clients = Array.isArray(merged.clients) ? merged.clients : [];
+                merged.suppliers = Array.isArray(merged.suppliers) ? merged.suppliers : [];
+                merged.inventoryMovements = Array.isArray(merged.inventoryMovements) ? merged.inventoryMovements : [];
+                merged.cashRegister = merged.cashRegister && typeof merged.cashRegister === 'object'
+                    ? Object.assign({ isOpen: false, initialAmount: 0, closingAmount: 0, closeDate: null, history: [] }, merged.cashRegister)
+                    : { isOpen: false, initialAmount: 0, closingAmount: 0, closeDate: null, history: [] };
+                merged.cashRegister.history = Array.isArray(merged.cashRegister.history) ? merged.cashRegister.history : [];
+                merged.cart = merged.cart && typeof merged.cart === 'object' ? merged.cart : {};
+                merged.products.forEach(p => { if (!(p.id in merged.cart)) merged.cart[p.id] = 0; });
+                return merged;
+            }
+
+            function $(id) { return document.getElementById(id); }
+
+            function todayISO() {
+                const d = new Date();
+                const tzOffset = d.getTimezoneOffset() * 60000;
+                return new Date(d.getTime() - tzOffset).toISOString().slice(0, 10);
+            }
+
+            function formatCOP(n) {
+                const value = Number.isFinite(n) ? n : 0;
+                return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(value);
+            }
+
+            function generateId(prefix) {
+                return prefix + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+            }
+
+            function showToast(msg, d = 2000) {
+                const t = $('toast');
+                if (!t) return;
+                t.textContent = msg;
+                t.style.display = 'block';
+                clearTimeout(t._timeout);
+                t._timeout = setTimeout(() => { t.style.display = 'none'; }, d);
+            }
+
+            function normalizeDate(value) {
+                if (!value) return '';
+                if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+                const m = String(value).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+                if (m) {
+                    const dd = String(m[1]).padStart(2, '0');
+                    const mm = String(m[2]).padStart(2, '0');
+                    const yyyy = m[3];
+                    return `${yyyy}-${mm}-${dd}`;
+                }
+                const d = new Date(value);
+                if (!Number.isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+                return String(value);
+            }
+
+            function displayDate(value) {
+                const iso = normalizeDate(value);
+                if (!iso) return '';
+                const [y, m, d] = iso.split('-');
+                return `${d}/${m}/${y}`;
+            }
+
+            function sameDay(recordDate, isoDate) {
+                return normalizeDate(recordDate) === normalizeDate(isoDate);
+            }
+
+            function saveToStorage() {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+                updateAllUI();
+            }
+
+            function resetAppState() {
+                appState = createDefaultState();
+            }
+
+            function loadFromStorage() {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (raw) {
+                    try {
+                        appState = ensureStateShape(JSON.parse(raw));
+                    } catch (e) {
+                        console.warn('No se pudo leer almacenamiento, reiniciando estado.', e);
+                        resetAppState();
+                    }
+                } else {
+                    resetAppState();
+                }
+                const saleDate = $('sale-date');
+                if (saleDate) saleDate.value = todayISO();
+                checkLowStock(false);
+                updateAllUI();
+            }
+
+            function switchTab(tabId, btn) {
+                document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+                const tab = $(tabId);
+                if (tab) tab.classList.add('active');
+                if (btn) btn.classList.add('active');
+                updateAllUI();
+            }
+
+            function openCashRegister() {
+                if (appState.cashRegister.isOpen) return showToast('La caja ya está abierta');
+                const raw = prompt('Monto inicial de caja ($):', String(INITIAL_CAPITAL));
+                const amount = parseFloat(raw);
+                if (Number.isNaN(amount) || amount < 0) return showToast('Monto inválido');
+                appState.cashRegister.isOpen = true;
+                appState.cashRegister.initialAmount = amount;
+                appState.cashRegister.closingAmount = 0;
+                appState.cashRegister.closeDate = null;
+                appState.cashRegister.history.unshift({
+                    date: todayISO(),
+                    initial: amount,
+                    closing: 0,
+                    difference: 0
+                });
+                saveToStorage();
+                showToast('Caja abierta');
+            }
+
+            function closeCashRegister() {
+                if (!appState.cashRegister.isOpen) return showToast('La caja no está abierta');
+                const today = todayISO();
+                const cashSales = appState.sales.filter(s => sameDay(s.date, today) && s.paymentMethod === 'cash').reduce((a, s) => a + (s.totalSale || 0), 0);
+                const cashExpenses = appState.expenses.filter(e => sameDay(e.date, today) && ['OPEX - Logística', 'OPEX - Administrativo', 'OPEX - Personal', 'CAPEX'].includes(e.category)).reduce((a, e) => a + (e.amount || 0), 0);
+                const expected = appState.cashRegister.initialAmount + cashSales - cashExpenses;
+                const raw = prompt(`Saldo esperado: ${formatCOP(expected)}\nIngrese el saldo real contado:`, String(Math.round(expected)));
+                const real = parseFloat(raw);
+                if (Number.isNaN(real)) return showToast('Saldo inválido');
+                const diff = real - expected;
+                appState.cashRegister.closingAmount = real;
+                appState.cashRegister.closeDate = new Date().toISOString();
+                appState.cashRegister.isOpen = false;
+                const last = appState.cashRegister.history[0];
+                if (last && last.date === today) {
+                    last.closing = real;
+                    last.difference = diff;
+                }
+                saveToStorage();
+                showToast(`Caja cerrada. Descuadre: ${formatCOP(diff)}`);
+            }
+
+            function clearCart() {
+                Object.keys(appState.cart).forEach(k => appState.cart[k] = 0);
+                updateAllUI();
+            }
+
+            function changeQty(productId, delta) {
+                const product = appState.products.find(p => p.id === productId);
+                if (!product) return;
+                const current = appState.cart[productId] || 0;
+
+                if (delta > 0 && Array.isArray(product.recipe)) {
+                    for (const ing of product.recipe) {
+                        const ins = appState.insumos.find(i => i.id === ing.insumoId);
+                        const required = (ing.qty || 0) * (current + delta);
+                        if (ins && ins.stock < required) {
+                            return showToast(`Stock insuficiente de ${ins.name}`);
+                        }
+                    }
+                }
+
+                appState.cart[productId] = Math.max(0, current + delta);
+                renderPOS();
+                renderDashboard();
+                renderCashStatus();
+                renderInventory();
+                renderMovementLog();
+                renderSalesHistory();
+                renderExpenses();
+                renderPnL();
+            }
+
+            function processCheckout() {
+                const saleDate = normalizeDate($('sale-date')?.value || todayISO());
+                const paymentMethod = $('sale-payment-method')?.value || 'cash';
+                const clientId = $('sale-client')?.value || null;
+                const note = $('sale-note')?.value.trim() || '';
+
+                const cartItems = appState.products
+                    .map(p => ({ product: p, qty: Number(appState.cart[p.id] || 0) }))
+                    .filter(x => x.qty > 0);
+
+                if (cartItems.length === 0) return showToast('No hay productos en el carrito');
+
+                for (const { product, qty } of cartItems) {
+                    if (Array.isArray(product.recipe)) {
+                        for (const ing of product.recipe) {
+                            const ins = appState.insumos.find(i => i.id === ing.insumoId);
+                            if (!ins) return showToast(`Insumo no encontrado: ${ing.insumoId}`);
+                            const required = (ing.qty || 0) * qty;
+                            if (ins.stock < required) return showToast(`Stock insuficiente de ${ins.name}`);
+                        }
+                    }
+                }
+
+                let totalSale = 0;
+                let totalCogs = 0;
+                const itemsSold = [];
+
+                for (const { product, qty } of cartItems) {
+                    let prodCogs = 0;
+                    if (Array.isArray(product.recipe)) {
+                        for (const ing of product.recipe) {
+                            const ins = appState.insumos.find(i => i.id === ing.insumoId);
+                            const used = (ing.qty || 0) * qty;
+                            ins.stock -= used;
+                            prodCogs += (ins.costPerUnit || 0) * used;
+                            appState.inventoryMovements.unshift({
+                                date: saleDate,
+                                insumoId: ins.id,
+                                qty: -used,
+                                reason: `Venta: ${product.name} x${qty}`
+                            });
+                        }
+                    }
+                    totalSale += (product.price || 0) * qty;
+                    totalCogs += prodCogs;
+                    itemsSold.push({ id: product.id, name: product.name, qty, unitPrice: product.price || 0, cogsTotal: prodCogs });
+                    appState.cart[product.id] = 0;
+                }
+
+                const sale = {
+                    id: generateId('S'),
+                    date: saleDate,
+                    timestamp: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
+                    items: itemsSold,
+                    totalSale,
+                    totalCogs,
+                    clientId,
+                    paymentMethod,
+                    note
+                };
+
+                appState.sales.unshift(sale);
+                if ($('sale-note')) $('sale-note').value = '';
+                saveToStorage();
+                showToast(`✅ Venta: ${formatCOP(totalSale)}`);
+
+                if (confirm('¿Enviar ticket por WhatsApp?')) {
+                    sendWhatsAppTicket(sale);
+                }
+            }
+
+            function sendWhatsAppTicket(sale) {
+                let text = `🧾 *Nómada Cafetero*\nFecha: ${displayDate(sale.date)} ${sale.timestamp}\n`;
+                sale.items.forEach(i => text += `• ${i.qty}x ${i.name}  ${formatCOP(i.unitPrice * i.qty)}\n`);
+                text += `\n💳 ${sale.paymentMethod}   Total: *${formatCOP(sale.totalSale)}*\nGracias por tu compra ☕`;
+                window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+            }
+
+            function addInsumo() {
+                const name = $('insumo-name')?.value.trim();
+                const unit = $('insumo-unit')?.value.trim();
+                const cost = parseFloat($('insumo-cost')?.value);
+                const stock = parseFloat($('insumo-stock')?.value);
+                const min = parseFloat($('insumo-min')?.value) || 0;
+
+                if (!name || !unit || Number.isNaN(cost) || Number.isNaN(stock)) {
+                    return showToast('Completa todos los campos');
+                }
+
+                const nextNum = String(appState.insumos.length + 1).padStart(3, '0');
+                const id = `I${nextNum}`;
+                appState.insumos.push({ id, name, unit, costPerUnit: cost, stock, minStock: min });
+
+                ['insumo-name', 'insumo-unit', 'insumo-cost', 'insumo-stock', 'insumo-min'].forEach(id => { if ($(id)) $(id).value = ''; });
+                saveToStorage();
+                showToast('Insumo agregado');
+            }
+
+            function addIngredientRow() {
+                const container = $('recipe-ingredients');
+                if (!container) return;
+
+                const row = document.createElement('div');
+                row.className = 'flex-row';
+                row.style.marginBottom = '10px';
+                row.innerHTML = `
+                    <select class="form-control" style="flex:2; min-width:160px;">
+                        ${appState.insumos.map(i => `<option value="${i.id}">${i.name} (${i.unit})</option>`).join('')}
+                    </select>
+                    <input type="number" class="form-control" placeholder="Cant." step="any" style="flex:1; min-width:90px;">
+                    <button class="btn-sm danger" type="button" onclick="this.parentElement.remove()">✕</button>
+                `;
+                container.appendChild(row);
+            }
+
+            function saveRecipe() {
+                const name = $('recipe-name')?.value.trim();
+                const price = parseFloat($('recipe-price')?.value);
+
+                if (!name || Number.isNaN(price)) return showToast('Nombre y precio requeridos');
+
+                const rows = document.querySelectorAll('#recipe-ingredients .flex-row');
+                const recipe = [];
+
+                rows.forEach(r => {
+                    const sel = r.querySelector('select');
+                    const inp = r.querySelector('input[type="number"]');
+                    if (sel && inp && inp.value !== '') {
+                        const qty = parseFloat(inp.value);
+                        if (!Number.isNaN(qty) && qty > 0) {
+                            recipe.push({ insumoId: sel.value, qty });
+                        }
+                    }
+                });
+
+                if (recipe.length === 0) return showToast('Añade al menos un insumo');
+
+                const nextNum = String(appState.products.length + 1).padStart(3, '0');
+                const id = `P${nextNum}`;
+                appState.products.push({ id, name, price, recipe });
+                appState.cart[id] = 0;
+
+                ['recipe-name', 'recipe-price', 'recipe-ingredients'].forEach(id => {
+                    const el = $(id);
+                    if (el) el.value = '';
+                });
+                if ($('recipe-ingredients')) $('recipe-ingredients').innerHTML = '';
+                saveToStorage();
+                showToast('Producto creado');
+            }
+
+            function adjustInventory() {
+                const insumoId = $('adj-insumo')?.value;
+                const qty = parseFloat($('adj-qty')?.value);
+                const reason = $('adj-reason')?.value.trim();
+
+                if (!insumoId || Number.isNaN(qty) || qty === 0 || !reason) return showToast('Completa todos los campos');
+
+                const ins = appState.insumos.find(i => i.id === insumoId);
+                if (!ins) return showToast('Insumo no encontrado');
+                if (qty < 0 && ins.stock < Math.abs(qty)) return showToast('Stock insuficiente');
+
+                ins.stock += qty;
+                appState.inventoryMovements.unshift({
+                    date: todayISO(),
+                    insumoId,
+                    qty,
+                    reason
+                });
+
+                if (qty < 0) {
+                    appState.expenses.unshift({
+                        id: generateId('E'),
+                        date: todayISO(),
+                        category: 'OPEX - Administrativo',
+                        desc: `Ajuste: ${reason} (${ins.name})`,
+                        amount: Math.abs(qty) * (ins.costPerUnit || 0),
+                        supplierId: null,
+                        note: ''
+                    });
+                }
+
+                if ($('adj-qty')) $('adj-qty').value = '';
+                if ($('adj-reason')) $('adj-reason').value = '';
+                saveToStorage();
+                showToast('Ajuste aplicado');
+            }
+
+            function addExpense() {
+                const cat = $('expense-category')?.value || 'OPEX - Administrativo';
+                const desc = $('expense-desc')?.value.trim();
+                const amount = parseFloat($('expense-amount')?.value);
+                if (!desc || Number.isNaN(amount) || amount <= 0) return showToast('Completa descripción y monto');
+
+                const expense = {
+                    id: generateId('E'),
+                    date: todayISO(),
+                    category: cat,
+                    desc,
+                    amount,
+                    supplierId: $('expense-supplier')?.value || null,
+                    note: $('expense-note')?.value.trim() || ''
+                };
+
+                appState.expenses.unshift(expense);
+
+                if (cat === 'Inventario (Compra en Bloque)') {
+                    const insumoId = prompt('¿ID del insumo a reponer? (dejar vacío si no)');
+                    if (insumoId) {
+                        const ins = appState.insumos.find(i => i.id === insumoId.trim());
+                        if (ins) {
+                            const qtyAdded = parseFloat(prompt(`Cantidad de ${ins.name} comprada (${ins.unit}):`));
+                            if (!Number.isNaN(qtyAdded) && qtyAdded > 0) {
+                                ins.stock += qtyAdded;
+                                appState.inventoryMovements.unshift({
+                                    date: todayISO(),
+                                    insumoId: ins.id,
+                                    qty: qtyAdded,
+                                    reason: `Compra: ${desc}`
+                                });
+                                showToast(`Stock de ${ins.name} actualizado`);
+                            }
+                        }
+                    }
+                }
+
+                ['expense-desc', 'expense-amount', 'expense-note'].forEach(id => { if ($(id)) $(id).value = ''; });
+                saveToStorage();
+                showToast('Egreso registrado');
+            }
+
+            function addClient() {
+                const name = $('client-name')?.value.trim();
+                const whatsapp = $('client-whatsapp')?.value.trim();
+                const address = $('client-address')?.value.trim();
+                if (!name) return showToast('Nombre requerido');
+
+                const client = {
+                    id: generateId('C'),
+                    name,
+                    whatsapp,
+                    address
+                };
+
+                appState.clients.unshift(client);
+                ['client-name', 'client-whatsapp', 'client-address'].forEach(id => { if ($(id)) $(id).value = ''; });
+                saveToStorage();
+                showToast('Cliente agregado');
+            }
+
+            function addSupplier() {
+                const name = $('supplier-name')?.value.trim();
+                const whatsapp = $('supplier-whatsapp')?.value.trim();
+                const address = $('supplier-address')?.value.trim();
+                if (!name) return showToast('Nombre requerido');
+
+                const supplier = {
+                    id: generateId('P'),
+                    name,
+                    whatsapp,
+                    address
+                };
+
+                appState.suppliers.unshift(supplier);
+                ['supplier-name', 'supplier-whatsapp', 'supplier-address'].forEach(id => { if ($(id)) $(id).value = ''; });
+                saveToStorage();
+                showToast('Proveedor agregado');
+            }
+
+            function handleLogoUpload(e) {
+                const file = e?.target?.files?.[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = () => {
+                    appState.logo = reader.result;
+                    const img = $('logo-preview');
+                    if (img) {
+                        img.src = reader.result;
+                        img.style.display = 'block';
+                    }
+                    saveToStorage();
+                    showToast('Logo cargado');
+                };
+                reader.readAsDataURL(file);
+            }
+
+            function clearLogo() {
+                appState.logo = null;
+                const img = $('logo-preview');
+                if (img) {
+                    img.removeAttribute('src');
+                    img.style.display = 'none';
+                }
+                saveToStorage();
+                showToast('Logo eliminado');
+            }
+
+            function renderDashboard() {
+                const today = todayISO();
+                const salesToday = appState.sales.filter(s => sameDay(s.date, today)).reduce((a, s) => a + (s.totalSale || 0), 0);
+                const expensesToday = appState.expenses.filter(e => sameDay(e.date, today)).reduce((a, e) => a + (e.amount || 0), 0);
+
+                if ($('dash-sales')) $('dash-sales').textContent = formatCOP(salesToday);
+                if ($('dash-expenses')) $('dash-expenses').textContent = formatCOP(expensesToday);
+                if ($('dash-net')) $('dash-net').textContent = formatCOP(salesToday - expensesToday);
+            }
+
+            function renderCashStatus() {
+                const status = appState.cashRegister.isOpen ? '🔓 Abierta' : '🔒 Cerrada';
+                if ($('cash-register-status')) {
+                    $('cash-register-status').innerHTML = `Estado: ${status} | Inicial: ${formatCOP(appState.cashRegister.initialAmount || 0)}`;
+                }
+                if ($('btn-open-cash')) $('btn-open-cash').style.display = appState.cashRegister.isOpen ? 'none' : 'inline-block';
+                if ($('btn-close-cash')) $('btn-close-cash').style.display = appState.cashRegister.isOpen ? 'inline-block' : 'none';
+            }
+
+            function renderPOS() {
+                const container = $('pos-products-container');
+                if (!container) return;
+
+                const query = ($('pos-search')?.value || '').trim().toLowerCase();
+                const products = appState.products.filter(p => !query || p.name.toLowerCase().includes(query));
+
+                container.innerHTML = products.map(p => {
+                    const qty = appState.cart[p.id] || 0;
+                    return `
+                        <div class="pos-item">
+                            <div class="pos-info">
+                                <h3>${p.name}</h3>
+                                <div class="meta">${formatCOP(p.price || 0)} · Cantidad: <strong>${qty}</strong></div>
+                            </div>
+                            <div style="display:flex; gap:8px; align-items:center;">
+                                <button class="btn-qty" type="button" onclick="changeQty('${p.id}', -1)">−</button>
+                                <span class="qty-display">${qty}</span>
+                                <button class="btn-qty" type="button" onclick="changeQty('${p.id}', 1)">+</button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                const total = appState.products.reduce((sum, p) => sum + (p.price || 0) * (appState.cart[p.id] || 0), 0);
+                if ($('cart-total')) $('cart-total').textContent = formatCOP(total);
+            }
+
+            function renderInventory() {
+                const selectIds = ['adj-insumo'];
+                selectIds.forEach(id => {
+                    const el = $(id);
+                    if (el) {
+                        el.innerHTML = appState.insumos.map(i => `<option value="${i.id}">${i.name} (${i.unit})</option>`).join('');
+                    }
+                });
+
+                const container = $('inventory-status-container');
+                if (container) {
+                    container.innerHTML = appState.insumos.map(i => {
+                        const low = Number(i.stock) <= Number(i.minStock);
+                        return `
+                            <div class="pos-item">
+                                <div class="pos-info">
+                                    <h3>${i.name}</h3>
+                                    <div class="meta">${i.stock} ${i.unit} · Costo: ${formatCOP(i.costPerUnit || 0)}</div>
+                                </div>
+                                <span class="badge ${low ? 'badge-low' : 'badge-ok'}">${low ? 'Bajo' : 'OK'}</span>
+                            </div>
+                        `;
+                    }).join('');
+                }
+            }
+
+            function renderMovementLog() {
+                const container = $('movement-log');
+                if (!container) return;
+
+                container.innerHTML = appState.inventoryMovements.slice(0, 30).map(m => {
+                    const ins = appState.insumos.find(i => i.id === m.insumoId);
+                    const qty = Number(m.qty || 0);
+                    return `<div style="padding:8px 0;border-bottom:1px solid #f0e6df;">
+                        <strong>${displayDate(m.date)}</strong> · ${ins?.name || m.insumoId}: ${qty > 0 ? '+' : ''}${qty} ${ins?.unit || ''}<br>
+                        <span style="color:#666;">${m.reason || ''}</span>
+                    </div>`;
+                }).join('');
+            }
+
+            function renderSalesHistory() {
+                const container = $('full-sales-history');
+                if (!container) return;
+
+                let sales = [...appState.sales];
+                if (salesFilter.from) sales = sales.filter(s => normalizeDate(s.date) >= salesFilter.from);
+                if (salesFilter.to) sales = sales.filter(s => normalizeDate(s.date) <= salesFilter.to);
+
+                container.innerHTML = sales.map(s => `
+                    <div class="history-item">
+                        <div>
+                            <strong>${displayDate(s.date)}</strong> ${s.timestamp ? `· ${s.timestamp}` : ''}<br>
+                            <span style="color:#666;">${(s.items || []).map(i => `${i.qty}x ${i.name}`).join(', ')}</span>
+                        </div>
+                        <div style="text-align:right;">
+                            <strong>${formatCOP(s.totalSale || 0)}</strong><br>
+                            <span class="badge badge-ok">${s.paymentMethod || ''}</span>
+                        </div>
+                    </div>
+                `).join('') || '<div style="padding:12px;">Sin ventas para mostrar.</div>';
+            }
+
+            function renderExpenses() {
+                const container = $('expense-history');
+                if (!container) return;
+
+                container.innerHTML = appState.expenses.slice(0, 20).map(e => `
+                    <div class="history-item">
+                        <div>
+                            <strong>${displayDate(e.date)}</strong><br>
+                            <span style="color:#666;">${e.category} · ${e.desc}</span>
+                        </div>
+                        <strong>${formatCOP(e.amount || 0)}</strong>
+                    </div>
+                `).join('') || '<div style="padding:12px;">Sin egresos.</div>';
+            }
+
+            function renderPnL() {
+                const container = $('pnl-container');
+                if (!container) return;
+
+                let sales = [...appState.sales];
+                let expenses = [...appState.expenses];
+                if (pnlFilter.from) {
+                    sales = sales.filter(s => normalizeDate(s.date) >= pnlFilter.from);
+                    expenses = expenses.filter(e => normalizeDate(e.date) >= pnlFilter.from);
+                }
+                if (pnlFilter.to) {
+                    sales = sales.filter(s => normalizeDate(s.date) <= pnlFilter.to);
+                    expenses = expenses.filter(e => normalizeDate(e.date) <= pnlFilter.to);
+                }
+
+                const revenue = sales.reduce((a, s) => a + (s.totalSale || 0), 0);
+                const cogs = sales.reduce((a, s) => a + (s.totalCogs || 0), 0);
+                const opex = expenses.reduce((a, e) => a + (e.amount || 0), 0);
+                const gross = revenue - cogs;
+                const net = gross - opex;
+
+                container.innerHTML = `
+                    <div class="card" style="box-shadow:none; margin-top:12px;">
+                        <div class="dashboard-card">
+                            <div class="dashboard-item"><div class="value">${formatCOP(revenue)}</div><div class="label">Ingresos</div></div>
+                            <div class="dashboard-item"><div class="value">${formatCOP(cogs)}</div><div class="label">Costo</div></div>
+                            <div class="dashboard-item"><div class="value">${formatCOP(net)}</div><div class="label">Neto</div></div>
+                        </div>
+                        <div style="line-height:1.7; padding:4px 2px;">
+                            <div>Utilidad bruta: <strong>${formatCOP(gross)}</strong></div>
+                            <div>Gastos operativos: <strong>${formatCOP(opex)}</strong></div>
+                            <div>Utilidad neta: <strong>${formatCOP(net)}</strong></div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            function populateSelects() {
+                const clients = appState.clients.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+                const suppliers = appState.suppliers.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+
+                if ($('sale-client')) $('sale-client').innerHTML = `<option value="">Sin cliente</option>${clients}`;
+                if ($('expense-supplier')) $('expense-supplier').innerHTML = `<option value="">Sin proveedor</option>${suppliers}`;
+
+                renderContacts();
+                renderRecipeIngredientOptions();
+                renderInventory();
+            }
+
+            function renderContacts() {
+                const clientsList = $('clients-list');
+                if (clientsList) {
+                    clientsList.innerHTML = appState.clients.map(c => `
+                        <div class="history-item">
+                            <div>
+                                <strong>${c.name}</strong><br>
+                                <span style="color:#666;">${c.whatsapp || ''}${c.address ? ' · ' + c.address : ''}</span>
+                            </div>
+                        </div>
+                    `).join('') || '<div style="padding:12px;">Sin clientes.</div>';
+                }
+
+                const suppliersList = $('suppliers-list');
+                if (suppliersList) {
+                    suppliersList.innerHTML = appState.suppliers.map(s => `
+                        <div class="history-item">
+                            <div>
+                                <strong>${s.name}</strong><br>
+                                <span style="color:#666;">${s.whatsapp || ''}${s.address ? ' · ' + s.address : ''}</span>
+                            </div>
+                        </div>
+                    `).join('') || '<div style="padding:12px;">Sin proveedores.</div>';
+                }
+            }
+
+            function renderRecipeIngredientOptions() {
+                document.querySelectorAll('#recipe-ingredients select').forEach(sel => {
+                    const current = sel.value;
+                    sel.innerHTML = appState.insumos.map(i => `<option value="${i.id}">${i.name} (${i.unit})</option>`).join('');
+                    if (current) sel.value = current;
+                });
+            }
+
+            function checkLowStock(show = true) {
+                const low = appState.insumos.filter(i => Number(i.stock) <= Number(i.minStock));
+                if (show && low.length) showToast(`⚠️ Stock bajo: ${low.map(i => i.name).join(', ')}`, 4000);
+                return low;
+            }
+
+            function filterSales() {
+                salesFilter.from = $('sales-filter-from')?.value || '';
+                salesFilter.to = $('sales-filter-to')?.value || '';
+                renderSalesHistory();
+            }
+
+            function clearSalesFilter() {
+                salesFilter = { from: '', to: '' };
+                if ($('sales-filter-from')) $('sales-filter-from').value = '';
+                if ($('sales-filter-to')) $('sales-filter-to').value = '';
+                renderSalesHistory();
+            }
+
+            function applyPnlFilter() {
+                pnlFilter.from = $('pnl-from')?.value || '';
+                pnlFilter.to = $('pnl-to')?.value || '';
+                renderPnL();
+            }
+
+            function clearPnlFilter() {
+                pnlFilter = { from: '', to: '' };
+                if ($('pnl-from')) $('pnl-from').value = '';
+                if ($('pnl-to')) $('pnl-to').value = '';
+                renderPnL();
+            }
+
+            function exportBackup() {
+                const blob = new Blob([JSON.stringify(appState, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `nomada_pos_backup_${todayISO()}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+                showToast('Backup generado');
+            }
+
+            function importBackup(event) {
+                const file = event?.target?.files?.[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = () => {
+                    try {
+                        appState = ensureStateShape(JSON.parse(reader.result));
+                        saveToStorage();
+                        showToast('Backup restaurado');
+                    } catch (e) {
+                        console.error(e);
+                        showToast('Archivo inválido');
+                    }
+                };
+                reader.readAsText(file);
+                if (event.target) event.target.value = '';
+            }
+
+            function exportToExcel() {
+                if (!window.XLSX) return showToast('La librería Excel no cargó');
+                const wb = XLSX.utils.book_new();
+
+                const salesData = appState.sales.flatMap(s => (s.items || []).map(i => ({
+                    Fecha: displayDate(s.date),
+                    Hora: s.timestamp || '',
+                    Producto: i.name,
+                    Cantidad: i.qty,
+                    'Precio unitario': i.unitPrice || 0,
+                    'Total venta': s.totalSale || 0,
+                    'Método pago': s.paymentMethod || '',
+                    Nota: s.note || ''
+                })));
+
+                const expensesData = appState.expenses.map(e => ({
+                    Fecha: displayDate(e.date),
+                    Categoria: e.category,
+                    Descripcion: e.desc,
+                    Valor: e.amount || 0,
+                    Nota: e.note || ''
+                }));
+
+                const inventoryData = appState.insumos.map(i => ({
+                    ID: i.id,
+                    Nombre: i.name,
+                    Unidad: i.unit,
+                    'Costo unidad': i.costPerUnit || 0,
+                    Stock: i.stock,
+                    'Stock mínimo': i.minStock || 0
+                }));
+
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(salesData), 'Ventas');
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(expensesData), 'Gastos');
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(inventoryData), 'Inventario');
+                XLSX.writeFile(wb, `nomada_pos_${todayISO()}.xlsx`);
+                showToast('Excel generado');
+            }
+
+            function resetSystemData() {
+                if (confirm('¿Reiniciar todo el sistema?')) {
+                    localStorage.removeItem(STORAGE_KEY);
+                    resetAppState();
+                    saveToStorage();
+                    showToast('Sistema reiniciado');
+                }
+            }
+
+            function runInternalSmokeTests() {
+                const results = [];
+                const test = (name, fn) => {
+                    try {
+                        fn();
+                        results.push([name, true]);
+                    } catch (e) {
+                        console.error('Smoke test failed:', name, e);
+                        results.push([name, false]);
+                    }
+                };
+
+                test('Funciones públicas expuestas', () => {
+                    ['openCashRegister','closeCashRegister','addInsumo','saveRecipe','addClient','addSupplier','processCheckout','exportBackup'].forEach(fn => {
+                        if (typeof window[fn] !== 'function') throw new Error(`Falta ${fn}`);
+                    });
+                });
+
+                test('Render POS no rompe', () => {
+                    renderPOS();
+                });
+
+                test('Render inventario no rompe', () => {
+                    renderInventory();
+                });
+
+                test('Render clientes/proveedores no rompe', () => {
+                    renderContacts();
+                });
+
+                test('Cálculos básicos', () => {
+                    const sale = appState.products[0];
+                    if (!sale) throw new Error('No hay productos');
+                    const total = appState.products.reduce((sum, p) => sum + (p.price || 0), 0);
+                    if (!(total > 0)) throw new Error('Total inválido');
+                });
+
+                const failed = results.filter(r => !r[1]).length;
+                console.log('[NÓMADA POS] Smoke tests:', results);
+                if (failed === 0) console.log('[NÓMADA POS] Todos los smoke tests pasaron.');
+                return results;
+            }
+
+            function updateAllUI() {
+                renderDashboard();
+                renderCashStatus();
+                renderPOS();
+                renderInventory();
+                renderMovementLog();
+                renderSalesHistory();
+                renderExpenses();
+                renderPnL();
+                populateSelects();
+                checkLowStock(false);
+            }
+
+            function bindEvents() {
+                document.querySelectorAll('.nav-item').forEach(b => {
+                    b.addEventListener('click', function () {
+                        switchTab(this.dataset.tab, this);
+                    });
+                });
+
+                if ($('pos-search')) {
+                    $('pos-search').addEventListener('input', renderPOS);
+                }
+
+                if ($('logo-upload')) {
+                    $('logo-upload').addEventListener('change', handleLogoUpload);
+                }
+
+                const restore = $('restore-file-input');
+                if (restore) {
+                    restore.addEventListener('change', importBackup);
+                }
+
+                if ($('sale-date')) {
+                    $('sale-date').value = todayISO();
+                }
+            }
+
+            window.addEventListener('error', (ev) => {
+                console.error('Error global POS:', ev.error || ev.message);
+            });
+
+            Object.assign(window, {
+                openCashRegister,
+                closeCashRegister,
+                processCheckout,
+                sendWhatsAppTicket,
+                clearCart,
+                changeQty,
+                addInsumo,
+                addIngredientRow,
+                saveRecipe,
+                adjustInventory,
+                addExpense,
+                addClient,
+                addSupplier,
+                handleLogoUpload,
+                clearLogo,
+                filterSales,
+                clearSalesFilter,
+                applyPnlFilter,
+                clearPnlFilter,
+                exportBackup,
+                importBackup,
+                exportToExcel,
+                resetSystemData,
+                switchTab
+            });
+
+            document.addEventListener('DOMContentLoaded', () => {
+                bindEvents();
+                loadFromStorage();
+                runInternalSmokeTests();
+
+                // Registrar Service Worker
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.register('sw.js')
+                        .then(reg => console.log('✅ SW registrado:', reg))
+                        .catch(err => console.warn('❌ Error SW:', err));
+                }
+            });
+        })();
+    </script>
+</body>
+</html>
