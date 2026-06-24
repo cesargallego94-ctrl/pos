@@ -3,6 +3,7 @@
   "short_name": "Nómada POS",
   "description": "Punto de venta para cafetería con inventario, gastos y reportes",
   "start_url": "/pos/",
+  "scope": "/pos/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#FFF8F0",
