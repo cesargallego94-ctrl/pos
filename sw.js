@@ -3,8 +3,8 @@ const urlsToCache = [
   '/pos/',
   '/pos/index.html',
   '/pos/manifest.json',
-  '/pos/icon-192.png',
-  '/pos/icon-512.png',
+  '/pos/icon192.png',
+  '/pos/icon512.png',
   'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js'
 ];
 
