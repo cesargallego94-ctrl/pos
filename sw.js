@@ -1,11 +1,13 @@
 const CACHE_NAME = 'nomada-pos-v1';
 const urlsToCache = [
-  'index.html',
-  'manifest.json',
+  '/pos/',
+  '/pos/index.html',
+  '/pos/manifest.json',
+  '/pos/icon-192.png',
+  '/pos/icon-512.png',
   'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js'
 ];
 
-// Instalación: cachear recursos
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
@@ -14,9 +16,9 @@ self.addEventListener('install', event => {
         return cache.addAll(urlsToCache);
       })
   );
+  self.skipWaiting(); // Forzar activación inmediata
 });
 
-// Activación: limpiar caches viejos
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(cacheNames => {
@@ -29,19 +31,19 @@ self.addEventListener('activate', event => {
       );
     })
   );
+  self.clients.claim(); // Tomar control de las pestañas abiertas
 });
 
-// Estrategia: cache-first para recursos, luego red
 self.addEventListener('fetch', event => {
   event.respondWith(
     caches.match(event.request)
       .then(response => {
         if (response) {
-          return response;
+          return response; // Sirve desde caché
         }
         return fetch(event.request).then(
           networkResponse => {
-            // Opcional: cachear nuevas respuestas (solo para recursos estáticos)
+            // Guarda en caché las nuevas respuestas
             if (event.request.url.startsWith('https://cdn.jsdelivr.net')) {
               const clone = networkResponse.clone();
               caches.open(CACHE_NAME).then(cache => {
@@ -53,7 +55,7 @@ self.addEventListener('fetch', event => {
         );
       })
       .catch(() => {
-        // Si falla todo, mostrar página offline (opcional)
+        // Si falla todo, muestra una página offline (opcional)
         return new Response('Sin conexión', { status: 503 });
       })
   );
